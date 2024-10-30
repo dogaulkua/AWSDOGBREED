@@ -1,98 +1,117 @@
-import argparse
 import os
-from classifier import classifier
+from get_input_args import get_input_args
+from get_pet_labels import get_pet_labels
+from classify_images import classify_images
+from adjust_results4_isadog import adjust_results4_isadog
+from calculates_results_stats import calculates_results_stats
+from print_results import print_results
 
-def get_input_args():
-    # Komut satırı argümanlarını tanımlıyoruz
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dir', type=str, default='pet_images/', help='Resim dosyalarının bulunduğu dizin')
-    parser.add_argument('--model', type=str, default='vgg', help='CNN model mimarisi (resnet, alexnet, vgg)')
-    parser.add_argument('--dogfile', type=str, default='dognames.txt', help='Köpek isimlerini içeren dosya')
-    
-    # Argümanları döndür
-    return parser.parse_args()
-
-def create_pet_labels(image_dir):
-    pet_labels = {}
-    
-    # Dizin içindeki tüm dosyaları listele
-    for filename in os.listdir(image_dir):
-        if filename[0] != '.':  # Gizli dosyaları atla
-            # Dosya ismindeki _ karakterine göre böl ve son kelimeyi at
-            label = " ".join([word.lower() for word in filename.split('_')[:-1]])
-            pet_labels[filename] = label.strip()
-    
-    return pet_labels
-
-def classify_images(images_dir, model_name):
-    results = {}
-    
-    # Resim dosyalarını döngüye sok
-    for img in os.listdir(images_dir):
-        if img[0] != '.':  # Gizli dosyaları atla
-            # Classifier fonksiyonunu kullanarak resmi sınıflandır
-            classifier_label = classifier(images_dir + img, model_name)
-            classifier_label = classifier_label.lower().strip()
-            
-            results[img] = classifier_label
-    return results
-
-def classify_dog_or_not(results, dogfile):
-    dog_names = set()
-    
-    # Köpek isimlerini dosyadan oku
-    with open(dogfile, 'r') as f:
-        for line in f:
-            dog_names.add(line.strip().lower())
-    
-    # Sonuçlardaki etiketleri kontrol et
-    for filename, label in results.items():
-        if label in dog_names:
-            results[filename] = 'dog'
-        else:
-            results[filename] = 'not_dog'
-    
-    return results
-def calculate_results(results, pet_labels):
-    correct_dogs = 0
-    total_dogs = 0
-    correct_not_dogs = 0
-    total_not_dogs = 0
-
-    for filename, label in pet_labels.items():
-        if label == 'dog':
-            total_dogs += 1
-            if results[filename] == 'dog':
-                correct_dogs += 1
-        else:
-            total_not_dogs += 1
-            if results[filename] == 'not_dog':
-                correct_not_dogs += 1
-
-    dog_accuracy = correct_dogs / total_dogs if total_dogs > 0 else 0
-    not_dog_accuracy = correct_not_dogs / total_not_dogs if total_not_dogs > 0 else 0
-
-    print(f"Köpek doğruluğu: {dog_accuracy:.2f}")
-    print(f"Köpek değil doğruluğu: {not_dog_accuracy:.2f}")
 def main():
-    # Argümanları al
+    # Get command line arguments
     args = get_input_args()
     
-    # Pet etiketlerini oluştur
-    pet_labels = create_pet_labels(args.dir)
+    # Get pet labels
+    pet_labels = get_pet_labels(args.dir)
     
-    # Resimleri sınıflandır
-    results = classify_images(args.dir, args.model)
+    # Classify images
+    results = classify_images(args.dir, pet_labels)
     
-    # Köpek mi değil mi sınıflandır
-    results = classify_dog_or_not(results, args.dogfile)
-    
-    # Sonuçları hesapla
-    calculate_results(results, pet_labels)
+    # Adjust results to check if classified as dog
+    results = adjust_results4_isadog(results)
 
-# Program çalıştırıldığında main fonksiyonunu çağır
+    # Calculate statistics
+    stats = calculates_results_stats(results)
+
+    # Print results
+    print_results(results, stats)
+
 if __name__ == "__main__":
     main()
+import argparse
 
-python check_images.py --dir pet_images/ --model vgg --dogfile dognames.txt
+def get_input_args():
+    parser = argparse.ArgumentParser(description='Process dog images for classification.')
+    parser.add_argument('--dir', type=str, default='pet_images/', help='Path to the image directory containing dog images')
+    return parser.parse_args()
+import os
 
+def get_pet_labels(image_dir):
+    pet_labels = {}
+    for filename in os.listdir(image_dir):
+        if filename.endswith(('.jpg', '.png')):
+            label = filename.split('_')[0]  # Format: breed_x.jpg (e.g., golden_retriever_1.jpg)
+            pet_labels[filename] = label.lower()
+    return pet_labels
+import torch
+from torchvision import models, transforms
+from PIL import Image
+
+def load_model():
+    # Load a pre-trained model (e.g., ResNet)
+    model = models.resnet50(pretrained=True)
+    model.eval()  # Set the model to evaluation mode
+    return model
+
+def classify_images(image_dir, pet_labels):
+    model = load_model()
+    results = {}
+
+    # Transform for input images
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
+    for filename, label in pet_labels.items():
+        img_path = os.path.join(image_dir, filename)
+        img = Image.open(img_path)
+        img_tensor = preprocess(img).unsqueeze(0)  # Add batch dimension
+
+        with torch.no_grad():
+            output = model(img_tensor)
+        
+        # Assuming the model outputs class probabilities, get the predicted label
+        _, predicted_idx = torch.max(output, 1)
+        predicted_label = f"predicted_breed_{predicted_idx.item()}"  # Mock prediction for this example
+
+        results[filename] = {
+            'predicted': predicted_label,
+            'is_dog': predicted_label in ['golden_retriever', 'bulldog', 'poodle', 'beagle', 'terrier']
+        }
+    return results
+def adjust_results4_isadog(results):
+    breed_list = ['golden_retriever', 'bulldog', 'poodle', 'beagle', 'terrier']
+    for filename, result in results.items():
+        result['is_dog'] = result['predicted'] in breed_list
+    return results
+def calculates_results_stats(results):
+    total_images = len(results)
+    total_dogs = sum(1 for result in results.values() if result['is_dog'])
+    stats = {
+        'total_images': total_images,
+        'total_dogs': total_dogs,
+        'dog_percentage': (total_dogs / total_images) * 100 if total_images > 0 else 0
+    }
+    return stats
+def print_results(results, stats):
+    print(f"Total images: {stats['total_images']}")
+    print(f"Total dogs: {stats['total_dogs']} ({stats['dog_percentage']:.2f}%)")
+    for filename, result in results.items():
+        print(f"{filename}: Predicted - {result['predicted']}, Is Dog? - {result['is_dog']}")
+/YourProject
+    ├── check_images.py           # Main script to check images and run the workflow
+    ├── get_input_args.py         # Script for parsing command-line arguments
+    ├── get_pet_labels.py         # Script to extract pet labels from filenames
+    ├── classify_images.py         # Script to classify images using a pre-trained model
+    ├── adjust_results4_isadog.py  # Script to adjust results to identify if classified as dog
+    ├── calculates_results_stats.py # Script to calculate statistics from the results
+    ├── print_results.py           # Script to print the results to the console
+    ├── pet_images/                # Folder containing the images to classify
+        ├── golden_retriever_1.jpg
+        ├── bulldog_1.jpg
+        ├── poodle_1.jpg
+        ├── cat_1.jpg              # Example images for classification
+
+python check_images.py --dir pet_images/
