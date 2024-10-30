@@ -1,0 +1,98 @@
+import argparse
+import os
+from classifier import classifier
+
+def get_input_args():
+    # Komut satırı argümanlarını tanımlıyoruz
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dir', type=str, default='pet_images/', help='Resim dosyalarının bulunduğu dizin')
+    parser.add_argument('--model', type=str, default='vgg', help='CNN model mimarisi (resnet, alexnet, vgg)')
+    parser.add_argument('--dogfile', type=str, default='dognames.txt', help='Köpek isimlerini içeren dosya')
+    
+    # Argümanları döndür
+    return parser.parse_args()
+
+def create_pet_labels(image_dir):
+    pet_labels = {}
+    
+    # Dizin içindeki tüm dosyaları listele
+    for filename in os.listdir(image_dir):
+        if filename[0] != '.':  # Gizli dosyaları atla
+            # Dosya ismindeki _ karakterine göre böl ve son kelimeyi at
+            label = " ".join([word.lower() for word in filename.split('_')[:-1]])
+            pet_labels[filename] = label.strip()
+    
+    return pet_labels
+
+def classify_images(images_dir, model_name):
+    results = {}
+    
+    # Resim dosyalarını döngüye sok
+    for img in os.listdir(images_dir):
+        if img[0] != '.':  # Gizli dosyaları atla
+            # Classifier fonksiyonunu kullanarak resmi sınıflandır
+            classifier_label = classifier(images_dir + img, model_name)
+            classifier_label = classifier_label.lower().strip()
+            
+            results[img] = classifier_label
+    return results
+
+def classify_dog_or_not(results, dogfile):
+    dog_names = set()
+    
+    # Köpek isimlerini dosyadan oku
+    with open(dogfile, 'r') as f:
+        for line in f:
+            dog_names.add(line.strip().lower())
+    
+    # Sonuçlardaki etiketleri kontrol et
+    for filename, label in results.items():
+        if label in dog_names:
+            results[filename] = 'dog'
+        else:
+            results[filename] = 'not_dog'
+    
+    return results
+def calculate_results(results, pet_labels):
+    correct_dogs = 0
+    total_dogs = 0
+    correct_not_dogs = 0
+    total_not_dogs = 0
+
+    for filename, label in pet_labels.items():
+        if label == 'dog':
+            total_dogs += 1
+            if results[filename] == 'dog':
+                correct_dogs += 1
+        else:
+            total_not_dogs += 1
+            if results[filename] == 'not_dog':
+                correct_not_dogs += 1
+
+    dog_accuracy = correct_dogs / total_dogs if total_dogs > 0 else 0
+    not_dog_accuracy = correct_not_dogs / total_not_dogs if total_not_dogs > 0 else 0
+
+    print(f"Köpek doğruluğu: {dog_accuracy:.2f}")
+    print(f"Köpek değil doğruluğu: {not_dog_accuracy:.2f}")
+def main():
+    # Argümanları al
+    args = get_input_args()
+    
+    # Pet etiketlerini oluştur
+    pet_labels = create_pet_labels(args.dir)
+    
+    # Resimleri sınıflandır
+    results = classify_images(args.dir, args.model)
+    
+    # Köpek mi değil mi sınıflandır
+    results = classify_dog_or_not(results, args.dogfile)
+    
+    # Sonuçları hesapla
+    calculate_results(results, pet_labels)
+
+# Program çalıştırıldığında main fonksiyonunu çağır
+if __name__ == "__main__":
+    main()
+
+python check_images.py --dir pet_images/ --model vgg --dogfile dognames.txt
+
