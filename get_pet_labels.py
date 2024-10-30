@@ -1,33 +1,30 @@
+from os import listdir
+
 def get_pet_labels(image_dir):
     """
-    Creates a dictionary of pet labels (results_dic) based upon the filenames 
-    of the image files. These pet image labels are used to check the accuracy 
-    of the labels that are returned by the classifier function, since the 
-    filenames of the images contain the true identity of the pet in the image.
-    Be sure to format the pet labels so that they are in all lower case letters
-    and with leading and trailing whitespace characters stripped from them.
-    (ex. filename = 'Boston_terrier_02259.jpg' Pet label = 'boston terrier')
+    Generates a dictionary of pet labels based on the filenames of the image files.
+    These labels are used to verify the accuracy of the classifier function's output,
+    as the filenames contain the true identity of the pet in the image.
+    
     Parameters:
-     image_dir - The (full) path to the folder of images that are to be
-                 classified by the classifier function (string)
+     image_dir - The full path to the folder of images to be classified (string)
+    
     Returns:
-      results_dic - Dictionary with 'key' as image filename and 'value' as a 
-      List. The list contains for following item:
-         index 0 = pet image label (string)
+      results_dict - Dictionary with image filename as key and a list as value.
+                     The list contains the following item:
+                     index 0 = pet image label (string)
     """
-    # Replace None with the results_dic dictionary that you created with this
-    # function
-    results_dic = dict()
-    filename_list = listdir(image_dir)
-    for filename in filename_list:
-        if not filename.startswith('.'):
-            pet_image = filename
-            low_pet_image = pet_image.lower()
-            word_list_pet_image = low_pet_image.split("_")
-            pet_name = ""
-            for word in word_list_pet_image:
-                if word.isalpha():
-                    pet_name += word + " "
-            pet_name = pet_name.strip()
-            results_dic[filename] = [pet_name]
-    return results_dic
+    results_dict = {}
+    filenames = listdir(image_dir)
+    
+    for filename in filenames:
+        if filename.startswith('.'):
+            continue
+        
+        # Extract pet label from filename
+        pet_label = " ".join([word for word in filename.lower().split('_') if word.isalpha()]).strip()
+        
+        # Add to results dictionary
+        results_dict[filename] = [pet_label]
+    
+    return results_dict
