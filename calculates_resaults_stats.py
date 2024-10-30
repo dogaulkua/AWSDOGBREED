@@ -1,65 +1,65 @@
-```python
 def calculate_statistics(results_dict):
     """
-    Sınıflandırma sonuçlarına dayalı olarak çeşitli istatistikler hesaplar ve
-    bu istatistikleri bir sözlük içinde toplar.
+    Computes various statistics based on classification results and stores
+    these statistics in a dictionary.
     
-    Parametreler:
-      results_dict - Görüntü dosyası adını anahtar olarak, şu bilgileri içeren bir listeyi değer olarak saklayan sözlük:
-                       0: görüntü etiketi (string)
-                       1: sınıflandırıcı etiketi (string)
-                       2: etiket uyumu (1: Uyumlu, 0: Uyumsuz)
-                       3: görüntü etiketinin köpek olup olmadığı (1: Köpek, 0: Değil)
-                       4: sınıflandırıcının köpek olarak tanımlayıp tanımlamadığı (1: Köpek, 0: Değil)
+    Parameters:
+      results_dict - Dictionary with image filename as key and a list as value.
+                     The list contains:
+                       0: pet image label (string)
+                       1: classifier label (string)
+                       2: label match (1: Match, 0: No Match)
+                       3: whether the pet image label is a dog (1: Dog, 0: Not a Dog)
+                       4: whether the classifier label is a dog (1: Dog, 0: Not a Dog)
                        
-    Dönüş:
-      stats_dict - Hesaplanan istatistikleri içeren ve her bir istatistik için anahtar-değer çifti içeren sözlük.
+    Returns:
+      stats_dict - Dictionary containing calculated statistics as key-value pairs.
     """
-    # İstatistik sayacı değişkenlerini tanımlama
+    # Initialize counters for statistics
     total_images = len(results_dict)
-    matching_dog_count = 0
+    correct_dog_matches = 0
     total_dog_images = 0
-    correct_non_dog_count = 0
-    non_dog_images = 0
-    correct_breed_count = 0
-    label_match_count = 0
+    correct_non_dog_matches = 0
+    total_non_dog_images = 0
+    correct_breed_matches = 0
+    total_label_matches = 0
 
-    # İstatistikleri toplama
+    # Calculate statistics
     for record in results_dict.values():
-        image_is_dog = record[3]
-        classifier_says_dog = record[4]
+        is_dog_image = record[3]
+        is_dog_classifier = record[4]
         is_label_match = record[2]
         
-        # Köpek görüntüleri ve doğrulama
-        if image_is_dog == 1:
+        # Dog image statistics
+        if is_dog_image == 1:
             total_dog_images += 1
-            if classifier_says_dog == 1:
-                matching_dog_count += 1
+            if is_dog_classifier == 1:
+                correct_dog_matches += 1
             if is_label_match == 1:
-                correct_breed_count += 1
+                correct_breed_matches += 1
         else:
-            non_dog_images += 1
-            if classifier_says_dog == 0:
-                correct_non_dog_count += 1
+            total_non_dog_images += 1
+            if is_dog_classifier == 0:
+                correct_non_dog_matches += 1
         
-        # Genel etiket uyumu
+        # Overall label match statistics
         if is_label_match == 1:
-            label_match_count += 1
+            total_label_matches += 1
 
-    # Yüzde hesaplamaları
-    dog_accuracy = (matching_dog_count / total_dog_images * 100) if total_dog_images else 0
-    breed_accuracy = (correct_breed_count / total_dog_images * 100) if total_dog_images else 0
-    non_dog_accuracy = (correct_non_dog_count / non_dog_images * 100) if non_dog_images else 0
-    label_match_rate = (label_match_count / total_images * 100) if total_images else 0
+    # Calculate percentages
+    dog_accuracy = (correct_dog_matches / total_dog_images * 100) if total_dog_images else 0
+    breed_accuracy = (correct_breed_matches / total_dog_images * 100) if total_dog_images else 0
+    non_dog_accuracy = (correct_non_dog_matches / total_non_dog_images * 100) if total_non_dog_images else 0
+    label_match_rate = (total_label_matches / total_images * 100) if total_images else 0
 
-    # Sonuçları sözlükte saklama
+    # Store results in a dictionary
     stats_dict = {
         'total_images': total_images,
-        'dog_images': total_dog_images,
-        'non_dog_images': non_dog_images,
-        'dog_match_count': matching_dog_count,
-        'non_dog_correct_count': correct_non_dog_count,
-        'breed_match_count': correct_breed_count,
+        'total_dog_images': total_dog_images,
+        'total_non_dog_images': total_non_dog_images,
+        'correct_dog_matches': correct_dog_matches,
+        'correct_non_dog_matches': correct_non_dog_matches,
+        'correct_breed_matches': correct_breed_matches,
         'dog_accuracy': dog_accuracy,
         'breed_accuracy': breed_accuracy,
         'non_dog_accuracy': non_dog_accuracy,
