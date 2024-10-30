@@ -1,30 +1,29 @@
-def adjust_results4_isadog(results_dictionary, dog_file):
+def adjust_results4_isadog(results_dict, dog_names_file):
     """
-    Bu işlev, her bir görüntü etiketi ve sınıflandırıcı etiketi için 
-    'köpek' olup olmadığını belirlemek amacıyla sonuçları günceller.
+    Updates the results dictionary to indicate whether each image label and classifier label is a dog.
 
-    Parametreler:
-      results_dictionary - Anahtarları görüntü dosya adları olan ve değerleri listelerden oluşan bir sözlük.
-                           Her listede şunlar bulunur:
-                           - resim etiketi (string)
-                           - sınıflandırıcı etiketi (string)
-                           - etiketlerin eşleşme durumu (1: Aynı, 0: Farklı)
-                           Bu işlev, her listeye iki bilgi daha ekleyecektir:
-                           - resim etiketinin köpek olup olmadığı (1: Evet, 0: Hayır)
-                           - sınıflandırıcı etiketinin köpek olup olmadığı (1: Evet, 0: Hayır)
-      dog_file - Köpek isimlerini içeren dosyanın yolu. Her satırda küçük harflerle bir köpek adı bulunur.
+    Parameters:
+      results_dict - Dictionary with image filenames as keys and lists as values.
+                     Each list contains:
+                     - image label (string)
+                     - classifier label (string)
+                     - label match status (1: Match, 0: No Match)
+                     This function will add two more items to each list:
+                     - whether the image label is a dog (1: Yes, 0: No)
+                     - whether the classifier label is a dog (1: Yes, 0: No)
+      dog_names_file - Path to the file containing dog names. Each line in the file contains a dog name in lowercase.
       
-    Dönen Değerler:
-      Yok - Bu işlev, doğrudan results_dictionary üzerinde değişiklik yapar.
+    Returns:
+      None - This function modifies the results_dict in place.
     """
-    # Dosyadaki köpek isimlerini küme olarak oku
-    with open(dog_file, 'r') as file:
-        dog_names_set = {line.strip().lower() for line in file}
+    # Read dog names from the file into a set
+    with open(dog_names_file, 'r') as file:
+        dog_names = {line.strip().lower() for line in file}
     
-    # Her anahtar için köpek olup olmadığını kontrol et ve sonuç listesine ekle
-    for image_name, attributes in results_dictionary.items():
-        pet_is_dog = 1 if attributes[0] in dog_names_set else 0
-        classifier_is_dog = 1 if attributes[1] in dog_names_set else 0
+    # Update results dictionary to indicate if labels are dogs
+    for filename, attributes in results_dict.items():
+        image_label_is_dog = 1 if attributes[0] in dog_names else 0
+        classifier_label_is_dog = 1 if attributes[1] in dog_names else 0
 
-        # Her görüntü için köpek olup olmama durumlarını sonuç listesine ekle
-        attributes += [pet_is_dog, classifier_is_dog]
+        # Append the dog status to the attributes list
+        attributes.extend([image_label_is_dog, classifier_label_is_dog])
